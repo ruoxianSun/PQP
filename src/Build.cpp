@@ -47,7 +47,7 @@
 // If this is set, build routines will use covariance matrix 
 // and mean finding code from RAPID 2.
 
-#define RAPID2_FIT 0
+#define RAPID2_FIT 1
 
 #if RAPID2_FIT
 

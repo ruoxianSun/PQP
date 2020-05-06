@@ -40,21 +40,25 @@
 
 #ifndef MODEL_H
 #define MODEL_H
-
+#include <glm/glm.hpp>
+#include <vector>
 struct ModelTri
 {
-  double p0[3], p1[3], p2[3];
-  double n[3];
+    glm::dvec3 p[3];
+    glm::dvec3 n;
 };
 
 class Model
 {
+public:
   int ntris;
-  ModelTri *tri;
+  std::vector<ModelTri> tri;
   int display_list;
 
 public:
+    Model(){}
   Model(char *tris_file);
+  void load(char* file);
   ~Model();
   void Draw();
   void DrawTri(int index);

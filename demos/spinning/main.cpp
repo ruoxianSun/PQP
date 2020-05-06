@@ -1,4 +1,3 @@
-/*************************************************************************\
 
   Copyright 1999 The University of North Carolina at Chapel Hill.
   All Rights Reserved.
@@ -42,12 +41,17 @@
 #include <stdlib.h>
 #include <math.h>
 #include <GL/glut.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include<glm/gtc/type_ptr.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/mat3x3.hpp>
 #include "PQP.h"
-#include "model.h"
+#include "CTest.h"
 #include "MatVec.h"
 
-PQP_Model bunny, torus;
-Model *bunny_to_draw, *torus_to_draw;
+
+CMyTest test;
 
 int mode;
 double beginx, beginy;
@@ -109,7 +113,7 @@ KeyboardCB(unsigned char key, int x, int y)
 {
   switch(key) 
   {
-  case 'q': delete bunny_to_draw; delete torus_to_draw; exit(0); 
+  case 'q': exit(0); 
   default: animate = 1 - animate;
   }
 
@@ -191,83 +195,71 @@ void
 DisplayCB()
 {
   BeginDraw();
-
-  // set up model transformations
-
-  if (animate) 
+  if (animate)
   {
-    rot1 += .1;
-    rot2 += .2;
-    rot3 += .3;
+      rot1 += 1;
+      rot2 += 1;
+      rot1 = (int)(rot1) % 360;
+      rot2 = (int)(rot2) % 360;
+      animate = false;
   }
+  glm::mat4 mm = glm::rotate(glm::mat4(1.f), glm::radians((float)rot1), glm::vec3(1, 0, 0));
+  glm::mat4 mm1 = glm::rotate(glm::mat4(1.f), glm::radians((float)rot2), glm::vec3(0, 1, 0));
 
-  PQP_REAL R1[3][3],R2[3][3],T1[3],T2[3];
-  PQP_REAL M1[3][3],M2[3][3],M3[3][3];
+  mm *= glm::translate(glm::mat4(1.f), glm::vec3(0, 0, -3.1f));
+  mm1 *= glm::translate(glm::mat4(1.f), glm::vec3(-3.1, 0, 0));
 
-  T1[0] = -1;
-  T1[1] =  0.0;
-  T1[2] =  0.0;
+  glm::dvec3 P1, P2, V1, V2;
+  auto query = [&]() {
+      // perform distance query
 
-  T2[0] =  1;
-  T2[1] =  0.0;
-  T2[2] =  0.0;
+      PQP_REAL rel_err = 0.0;
+      PQP_REAL abs_err = 0.0;
+      PQP_DistanceResult res;
+      PQP_REAL R1[3][3], R2[3][3], T1[3], T2[3];
+      glm::dmat4 oglm(mm), oglm1(mm1);
+      OGLtoMV(R1, T1, &oglm[0][0]);
+      OGLtoMV(R2, T2, &oglm1[0][0]);
+      PQP_Distance(&res, R1, T1, &test.bunny, R2, T2, &test.torus, rel_err, abs_err);
 
-  MRotX(M1,rot1);
-  MRotY(M2,rot2);
-  MxM(M3,M1,M2);
-  MRotZ(M1,rot3);
-  MxM(R1,M3,M1);
-
-  MRotX(M1,rot3);
-  MRotY(M2,rot1);
-  MxM(M3,M1,M2);
-  MRotZ(M1,rot2);
-  MxM(R2,M3,M1);
-
-  // perform distance query
-
-  PQP_REAL rel_err = 0.0;
-  PQP_REAL abs_err = 0.0;
-  PQP_DistanceResult res;
-  PQP_Distance(&res,R1,T1,&bunny,R2,T2,&torus,rel_err,abs_err);
-
+      VcV(&P1[0], res.P1());
+      VcV(&P2[0], res.P2());
+  };
+  query();
+  
   // draw the models
 
   glColor3d(0.0,0.0,1.0);
-  double oglm[16];
-  MVtoOGL(oglm,R1,T1);
   glPushMatrix();
-  glMultMatrixd(oglm);
-  bunny_to_draw->Draw();
+  glMultMatrixf(glm::value_ptr(mm));
+  test.bunny_to_draw.Draw();
   glPopMatrix();
 
   glColor3d(0.0,1.0,0.0);
-  MVtoOGL(oglm,R2,T2);
   glPushMatrix();
-  glMultMatrixd(oglm);
-  torus_to_draw->Draw();
+  glMultMatrixf(glm::value_ptr(mm1));
+  test.torus_to_draw.Draw();
   glPopMatrix();
 
   // draw the closest points as small spheres
-
+#if 1
   glColor3d(1.0,0.0,0.0);
 
-  PQP_REAL P1[3],P2[3],V1[3],V2[3];
-  VcV(P1,res.P1());
-  VcV(P2,res.P2());
 
   // each point is in the space of its model;
   // transform to world space
 
-  MxVpV(V1,R1,P1,T1);
 
+
+  //MxVpV(V1,R1,P1,T1);
+  V1 = glm::dvec3(mm * glm::dvec4(P1, 1.0));
   glPushMatrix();
   glTranslated(V1[0],V1[1],V1[2]);
   glutSolidSphere(.05,15,15);
   glPopMatrix();
 
-  MxVpV(V2,R2,P2,T2);
-
+  //MxVpV(V2,R2,P2,T2);
+  V2 = glm::dvec3(mm1 * glm::dvec4(P2, 1.0));
   glPushMatrix();
   glTranslated(V2[0],V2[1],V2[2]);
   glutSolidSphere(.05,15,15);
@@ -277,11 +269,11 @@ DisplayCB()
 
   glDisable(GL_LIGHTING);
   glBegin(GL_LINES);
-  glVertex3v(V1);
-  glVertex3v(V2);
+  glVertex3dv(glm::value_ptr(V1));
+  glVertex3dv(glm::value_ptr(V2));
   glEnd();
   glEnable(GL_LIGHTING);
-
+#endif
   EndDraw();
 }
 
@@ -306,55 +298,7 @@ int main(int argc, char **argv)
   glutMotionFunc(MotionCB);  
   glutKeyboardFunc(KeyboardCB);
 
-  // initialize the bunny
-
-  FILE *fp;
-  int i, ntris;
-
-  bunny_to_draw = new Model("bunny.tris");
-
-  fp = fopen("bunny.tris","r");
-  if (fp == NULL) { fprintf(stderr,"Couldn't open bunny.tris\n"); exit(-1); }
-  fscanf(fp,"%d",&ntris);
-
-  bunny.BeginModel();
-  for (i = 0; i < ntris; i++)
-  {
-    double p1x,p1y,p1z,p2x,p2y,p2z,p3x,p3y,p3z;
-    fscanf(fp,"%lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-           &p1x,&p1y,&p1z,&p2x,&p2y,&p2z,&p3x,&p3y,&p3z);
-    PQP_REAL p1[3],p2[3],p3[3];
-    p1[0] = (PQP_REAL)p1x; p1[1] = (PQP_REAL)p1y; p1[2] = (PQP_REAL)p1z;
-    p2[0] = (PQP_REAL)p2x; p2[1] = (PQP_REAL)p2y; p2[2] = (PQP_REAL)p2z;
-    p3[0] = (PQP_REAL)p3x; p3[1] = (PQP_REAL)p3y; p3[2] = (PQP_REAL)p3z;
-    bunny.AddTri(p1,p2,p3,i);
-  }
-  bunny.EndModel();
-  fclose(fp);
-
-  // initialize the torus
-
-  torus_to_draw = new Model("torus.tris");
-
-  fp = fopen("torus.tris","r");
-  if (fp == NULL) { fprintf(stderr,"Couldn't open torus.tris\n"); exit(-1); }
-  fscanf(fp,"%d",&ntris);
-
-  torus.BeginModel();
-  for (i = 0; i < ntris; i++)
-  {
-    double p1x,p1y,p1z,p2x,p2y,p2z,p3x,p3y,p3z;
-    fscanf(fp,"%lf %lf %lf %lf %lf %lf %lf %lf %lf", 
-           &p1x,&p1y,&p1z,&p2x,&p2y,&p2z,&p3x,&p3y,&p3z);
-    PQP_REAL p1[3],p2[3],p3[3];
-    p1[0] = (PQP_REAL)p1x; p1[1] = (PQP_REAL)p1y; p1[2] = (PQP_REAL)p1z;
-    p2[0] = (PQP_REAL)p2x; p2[1] = (PQP_REAL)p2y; p2[2] = (PQP_REAL)p2z;
-    p3[0] = (PQP_REAL)p3x; p3[1] = (PQP_REAL)p3y; p3[2] = (PQP_REAL)p3z;
-    torus.AddTri(p1,p2,p3,i);
-  }
-  torus.EndModel();
-  fclose(fp);
-
+  test.init();
   // print instructions
 
   printf("PQP Demo - Spinning:\n"

@@ -71,8 +71,10 @@ Vnormalize(double V[3])
   V[1] *= d;
   V[2] *= d;
 }
-
-Model::Model(char *tris_file)
+Model::Model(char* file) {
+    load(file);
+}
+void Model::load(char *tris_file)
 {
   FILE *fp = fopen(tris_file,"r");
   if (fp == NULL)
@@ -82,7 +84,7 @@ Model::Model(char *tris_file)
   }
 
   fscanf(fp,"%d",&ntris);
-  tri = new ModelTri[ntris];
+  tri.resize(ntris);
 
   int i;
 
@@ -90,18 +92,18 @@ Model::Model(char *tris_file)
   {
     // read the tri verts
 
-    fscanf(fp,"%lf %lf %lf %lf %lf %lf %lf %lf %lf",
-           &tri[i].p0[0], &tri[i].p0[1], &tri[i].p0[2],
-           &tri[i].p1[0], &tri[i].p1[1], &tri[i].p1[2],
-           &tri[i].p2[0], &tri[i].p2[1], &tri[i].p2[2]);
+      fscanf(fp, "%lf %lf %lf %lf %lf %lf %lf %lf %lf",
+          &tri[i].p[0].x, &tri[i].p[0].y, &tri[i].p[0].z,
+          &tri[i].p[1].x, &tri[i].p[1].y, &tri[i].p[1].z,
+          &tri[i].p[2].x, &tri[i].p[2].y, &tri[i].p[2].z);
 
     // set the normal
 
     double a[3],b[3];
-    VmV(a,tri[i].p1,tri[i].p0);
-    VmV(b,tri[i].p2,tri[i].p0);
-    VcrossV(tri[i].n,a,b);
-    Vnormalize(tri[i].n);
+    VmV(a,&tri[i].p[1][0],&tri[i].p[0][0]);
+    VmV(b,&tri[i].p[2][0],&tri[i].p[0][0]);
+    VcrossV(&tri[i].n[0],a,b);
+    Vnormalize(&tri[i].n[0]);
   }
   
   fclose(fp);
@@ -113,10 +115,10 @@ Model::Model(char *tris_file)
   glBegin(GL_TRIANGLES);
   for (i = 0; i < ntris; i++)
   {
-    glNormal3dv(tri[i].n);
-    glVertex3dv(tri[i].p0);
-    glVertex3dv(tri[i].p1);
-    glVertex3dv(tri[i].p2);
+    glNormal3dv(&tri[i].n[0]);
+    glVertex3dv(&tri[i].p[0][0]);
+    glVertex3dv(&tri[i].p[1][0]);
+    glVertex3dv(&tri[i].p[2][0]);
   }
   glEnd();
   glEndList();  
@@ -124,7 +126,6 @@ Model::Model(char *tris_file)
 
 Model::~Model()
 {
-  delete [] tri;
 }
 
 void
@@ -137,8 +138,8 @@ void
 Model::DrawTri(int index)
 {
   glBegin(GL_TRIANGLES);
-  glVertex3dv(tri[index].p0);
-  glVertex3dv(tri[index].p1);
-  glVertex3dv(tri[index].p2);
+  glVertex3dv(&tri[index].p[0][0]);
+  glVertex3dv(&tri[index].p[1][0]);
+  glVertex3dv(&tri[index].p[2][0]);
   glEnd();
 }
