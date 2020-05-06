@@ -1,4 +1,4 @@
-
+/*
   Copyright 1999 The University of North Carolina at Chapel Hill.
   All Rights Reserved.
 
@@ -201,7 +201,7 @@ DisplayCB()
       rot2 += 1;
       rot1 = (int)(rot1) % 360;
       rot2 = (int)(rot2) % 360;
-      animate = false;
+      //animate = false;
   }
   glm::mat4 mm = glm::rotate(glm::mat4(1.f), glm::radians((float)rot1), glm::vec3(1, 0, 0));
   glm::mat4 mm1 = glm::rotate(glm::mat4(1.f), glm::radians((float)rot2), glm::vec3(0, 1, 0));
@@ -224,6 +224,8 @@ DisplayCB()
 
       VcV(&P1[0], res.P1());
       VcV(&P2[0], res.P2());
+      V1 = glm::dvec3(mm * glm::dvec4(P1, 1.0));
+      V2 = glm::dvec3(mm1 * glm::dvec4(P2, 1.0));
   };
   query();
   
@@ -245,21 +247,12 @@ DisplayCB()
 #if 1
   glColor3d(1.0,0.0,0.0);
 
-
-  // each point is in the space of its model;
-  // transform to world space
-
-
-
-  //MxVpV(V1,R1,P1,T1);
-  V1 = glm::dvec3(mm * glm::dvec4(P1, 1.0));
+   
   glPushMatrix();
   glTranslated(V1[0],V1[1],V1[2]);
   glutSolidSphere(.05,15,15);
   glPopMatrix();
 
-  //MxVpV(V2,R2,P2,T2);
-  V2 = glm::dvec3(mm1 * glm::dvec4(P2, 1.0));
   glPushMatrix();
   glTranslated(V2[0],V2[1],V2[2]);
   glutSolidSphere(.05,15,15);

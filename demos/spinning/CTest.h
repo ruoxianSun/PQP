@@ -27,7 +27,7 @@ public:
 
         // initialize the torus
 
-        torus_to_draw.load("torus.tris");
+        torus_to_draw.load("torus2.tris");
 
 
         torus.BeginModel();
